@@ -1,0 +1,917 @@
+:root {
+  --navy: #0F2142;
+  --navy-2: #16305c;
+  --gold: #B08D57;
+  --gold-light: #E4D3B8;
+  --bg: #F6F4F1;
+  --panel: #FFFFFF;
+  --line: #E4E0DA;
+  --text: #23262B;
+  --text-muted: #6B7178;
+  --danger: #B4443A;
+  --success: #2E7D5B;
+  --radius: 10px;
+  --font-ui: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden { display: none !important; }
+
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: 100vh;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  background: var(--navy);
+  color: #fff;
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden; /* прокручивается только .tree внутри, не весь сайдбар целиком */
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--gold); color: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; letter-spacing: 0.5px;
+}
+.brand-name { font-weight: 700; font-size: 15px; }
+.brand-sub { font-size: 12px; color: var(--gold-light); }
+
+.project-list, .tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden; /* без этого браузер сам включает горизонтальную
+    прокрутку при длинных названиях авторов/произведений — обрезаем текст
+    многоточием (см. .author-name/.wi-title) вместо того, чтобы давать
+    строке растягиваться вбок */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+.author-group { margin-bottom: 4px; }
+.author-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px; border-radius: var(--radius); cursor: pointer;
+  font-size: 13px; font-weight: 700; color: #E8ECF4;
+}
+.author-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+  /* min-width: 0 обязателен — без него flex-элемент не сжимается меньше
+     содержимого, и text-overflow/overflow просто не сработают */
+}
+.author-row:hover { background: rgba(255,255,255,0.06); }
+.author-caret { font-size: 10px; color: var(--gold); transition: transform 0.15s; width: 10px; }
+.author-caret.collapsed { transform: rotate(-90deg); }
+.author-count { margin-left: auto; font-size: 11px; color: #8791A3; font-weight: 400; flex-shrink: 0; }
+.author-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.icon-btn {
+  background: transparent; border: none; color: #8791A3; cursor: pointer;
+  font-size: 12px; padding: 2px 5px; border-radius: 5px;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+.work-item {
+  padding: 8px 12px 8px 26px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 13px;
+  color: #D9DEE8;
+  border: 1px solid transparent;
+  display: flex; align-items: center; gap: 6px;
+}
+.work-item:hover { background: rgba(255,255,255,0.06); }
+.work-item.active {
+  background: rgba(176,141,87,0.18);
+  border-color: var(--gold);
+  color: #fff;
+  font-weight: 600;
+}
+.work-item .wi-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #4A5266; flex-shrink: 0;
+}
+.work-item.inactive .wi-dot { background: transparent; border: 1px solid #4A5266; }
+.work-item .wi-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.work-item .wi-running { flex-shrink: 0; font-size: 11px; animation: wi-pulse 1.4s ease-in-out infinite; }
+@keyframes wi-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.add-work-btn {
+  padding: 6px 12px 6px 26px; font-size: 12px; color: var(--gold);
+  background: transparent; border: none; text-align: left; cursor: pointer;
+}
+.add-work-btn:hover { text-decoration: underline; }
+
+.project-item { padding: 10px 12px; border-radius: var(--radius); cursor: pointer; font-size: 13.5px; color: #D9DEE8; border: 1px solid transparent; }
+.project-item:hover { background: rgba(255,255,255,0.06); }
+.project-item.active { background: rgba(176,141,87,0.18); border-color: var(--gold); color: #fff; font-weight: 600; }
+
+.checkbox-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+.checkbox-inline { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--text); }
+.checkbox-inline input { width: auto; margin: 0; }
+.checkbox-inline-standalone { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.checkbox-inline-standalone input { width: auto; }
+
+.source-tag {
+  display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 999px;
+  background: #EFEAE3; color: var(--navy-2); font-weight: 600; white-space: nowrap;
+}
+.already-blocked-badge {
+  display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 999px;
+  background: #EAF6EF; color: var(--success); font-weight: 600; white-space: nowrap;
+}
+.row-already-blocked { opacity: 0.55; }
+.row-already-blocked:hover { opacity: 0.85; }
+
+/* Подсказки в результатах «Поиск по сайтам» — см. renderSiteResults.
+   Обе чисто информационные, ничего не меняют автоматически — решение,
+   куда и как отправлять ссылку, всегда остаётся за сотрудником. */
+.site-result-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.chronic-known-badge {
+  display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 999px;
+  background: #FBF1DE; color: #8A6A22; font-weight: 600; white-space: nowrap; cursor: help;
+}
+.mirror-pattern-badge {
+  display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 999px;
+  background: #EFEAE3; color: var(--navy-2); font-weight: 600; white-space: nowrap; cursor: help;
+}
+
+.sidebar-footer { display: flex; flex-direction: column; gap: 10px; }
+.status-pill {
+  font-size: 11px;
+  text-align: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #C4CCDA;
+}
+.run-all-status {
+  font-size: 11.5px; text-align: center; padding: 6px 10px; margin-top: -4px;
+  border-radius: 8px; background: rgba(176,141,87,0.18); color: var(--gold-light);
+}
+.status-pill.demo { background: rgba(176,141,87,0.25); color: var(--gold-light); }
+.status-pill.live { background: rgba(46,125,91,0.25); color: #9FE3C4; }
+
+.user-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: #C4CCDA; padding: 4px 2px;
+}
+.user-row form { margin: 0; }
+.user-row .row-btn {
+  background: transparent; border-color: rgba(255,255,255,0.25); color: #C4CCDA;
+  font-size: 11px; padding: 4px 8px;
+}
+.user-row .row-btn:hover { background: rgba(255,255,255,0.08); }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.05s ease, opacity 0.15s;
+}
+.btn:active { transform: scale(0.98); }
+.btn-block { width: 100%; }
+.btn-primary { background: var(--gold); color: var(--navy); }
+.btn-primary:hover { opacity: 0.9; }
+.btn-ghost { background: transparent; border-color: var(--line); color: var(--text); }
+.sidebar .btn-ghost { border-color: rgba(255,255,255,0.25); color: #D9DEE8; }
+.sidebar .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+.btn-ghost:hover { background: #F0EDE7; }
+.btn-danger-ghost { background: transparent; border-color: #E3C6C1; color: var(--danger); }
+.btn-danger-ghost:hover { background: #FBEEEC; }
+
+/* ---------- Main ---------- */
+.main {
+  padding: 34px 42px;
+  overflow-y: auto;
+  min-height: 0; /* без этого — классическая западня CSS Grid: элемент сетки
+    может растянуться под своё содержимое сильнее самой сетки, и тогда
+    реально скроллится вся страница целиком, а не эта область — из-за
+    этого казалось, что прокрутка «появляется», только если промотать
+    страницу до самого низа */
+}
+
+/* Раздел «Блокировка» — растягивается на всю доступную высоту .main и
+   отдаёт всё лишнее место таблице (.blocking-table-wrap, flex: 1), а не
+   оставляет пустое поле снизу под фиксированные 70vh, как было раньше.
+   Заголовок, фильтры и т.п. над таблицей сохраняют свою обычную высоту. */
+#blockingView {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.empty-state {
+  height: 70vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; color: var(--text-muted); max-width: 420px; margin: 0 auto;
+}
+.empty-emoji { font-size: 40px; margin-bottom: 10px; }
+.empty-state h2 { margin: 0 0 6px; color: var(--text); }
+
+.view-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 20px; margin-bottom: 14px;
+}
+/* Компактный заголовок раздела «Блокировка» — по просьбе пользователя
+   вместо трёх строк (метка «ОТДЕЛЬНЫЙ РАЗДЕЛ» + заголовок + описание) и
+   отдельного длинного абзаца-подсказки под ним, теперь высота заголовка
+   почти равна одной строке «Блокировка» — описание и пояснение про
+   помесячный отчёт свёрнуты в маленький значок ⓘ рядом с заголовком
+   (см. .header-info-toggle ниже), раскрывается по клику, а не занимает
+   место постоянно. Освободившуюся высоту получает таблица снизу —
+   .blocking-table-wrap уже растягивается на всё доступное место
+   (flex: 1 у #blockingView), так что здесь ничего специально
+   растягивать для таблицы не нужно, чем меньше высота этого блока,
+   тем больше достаётся таблице автоматически. */
+.view-header-compact { margin-bottom: 8px; align-items: center; }
+.view-header-compact h1 { font-size: 20px; display: flex; align-items: center; gap: 8px; }
+.header-info-toggle { display: inline-block; position: relative; font-size: 13px; }
+.header-info-toggle summary {
+  list-style: none; cursor: pointer; color: var(--text-muted);
+  border: 1px solid var(--line); border-radius: 50%;
+  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+.header-info-toggle summary::-webkit-details-marker { display: none; }
+.header-info-toggle[open] summary { color: var(--text); border-color: var(--gold); }
+.header-info-body {
+  position: absolute; z-index: 20; top: 24px; left: 0; width: 380px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--text-muted);
+  font-weight: 400; box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+.eyebrow {
+  font-size: 11px; letter-spacing: 1.5px; color: var(--gold);
+  font-weight: 700; margin-bottom: 4px;
+}
+.view-header h1 { margin: 0; font-size: 26px; }
+.pv-query {
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); margin-top: 6px;
+}
+.view-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+.view-actions input[type="month"] {
+  padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--line);
+  font-family: inherit; font-size: 13px; color: var(--text);
+}
+
+.pv-meta { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+.meta-chip {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 7px 12px; border-radius: 999px; font-size: 12.5px; color: var(--text-muted);
+}
+.meta-chip span { color: var(--text); font-weight: 600; }
+
+.run-progress { margin: 18px 0; }
+.progress-track { height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; width: 0%; background: var(--gold); transition: width 0.3s; }
+.progress-label { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; display: inline-block; }
+.run-progress #stopSiteSearchBtn { margin-top: 6px; margin-left: 12px; padding: 4px 12px; font-size: 12px; }
+
+.demo-banner {
+  background: #FBF3E6; border: 1px solid var(--gold-light);
+  color: #7A5B26; font-size: 13px; padding: 10px 14px;
+  border-radius: var(--radius); margin: 14px 0;
+}
+
+.site-redirects-banner {
+  background: #EAF3FB; border: 1px solid #B7D4EC;
+  color: #2A5578; font-size: 13px; padding: 10px 14px;
+  border-radius: var(--radius); margin: 14px 0;
+}
+.site-redirect-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 5px 0;
+}
+
+.results-block { margin-top: 20px; }
+.results-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
+}
+.funnel { display: flex; gap: 8px; flex-wrap: wrap; }
+.funnel-step {
+  font-size: 12px; padding: 5px 10px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--text-muted);
+}
+.funnel-step b { color: var(--navy); }
+.results-actions { display: flex; gap: 8px; align-items: center; }
+
+.view-toggle {
+  display: flex; border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; margin-right: 4px;
+}
+.toggle-btn {
+  font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 12px;
+  border: none; background: var(--panel); color: var(--text-muted); cursor: pointer;
+}
+.toggle-btn.active { background: var(--navy); color: #fff; }
+.toggle-btn:hover:not(.active) { background: #F0EDE7; }
+
+.hint-text { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; }
+
+.results-table {
+  width: 100%; background: var(--panel); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
+  border-collapse: separate; border-spacing: 0;
+  /* было border-collapse: collapse — оно ломает position: sticky на
+     ячейках таблицы почти во всех браузерах (известное ограничение).
+     separate + border-spacing: 0 выглядит визуально так же (без двойных
+     линий на границах), но sticky-заголовок и sticky-колонки реально
+     начинают работать. */
+}
+.results-table th {
+  text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-muted); background: #FAF8F5; padding: 10px 14px; border-bottom: 1px solid var(--line);
+}
+.results-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: top; }
+.results-table tr:last-child td { border-bottom: none; }
+.results-table tr:hover td { background: #FCFBF9; }
+.r-title { font-weight: 600; margin-bottom: 3px; }
+.r-desc { color: var(--text-muted); font-size: 12.5px; line-height: 1.4; }
+/* В таблице «Блокировка» источник (например, длинная пометка «перенесено
+   из старой таблицы ...») обрезается в одну строку с многоточием — иначе
+   такой текст растягивает строку таблицы на много строк по высоте.
+   Полный текст остаётся доступен по наведению (title). */
+.r-desc-clamp {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+.r-url { font-family: var(--font-mono); font-size: 12px; color: var(--navy-2); word-break: break-all; }
+/* В таблице «Блокировка» ссылка теперь приходит уже сокращённой (см.
+   shortenUrl в app.js), поэтому здесь её можно держать в одну строку —
+   раньше полный URL переносился по одному символу на всю доступную
+   ширину, и из-за этого в видимой области помещалось всего 3-4 дела.
+   max-width: 100% (не фиксированные px) — чтобы при ручном изменении
+   ширины столбца «Ссылка» (см. .col-resize-handle) текст всегда точно
+   умещался в границы ячейки, а не вылезал за них или наоборот не
+   дотягивал до новой, увеличенной ширины. */
+.blocking-table .r-url {
+  display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; word-break: normal;
+}
+.petition-filed-mark { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-top: 4px; }
+.petition-filed-mark input { margin: 0; cursor: pointer; }
+.link-status-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.link-status-row select { font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--line); }
+.link-status-badge {
+  font-size: 11px; padding: 2px 6px; border-radius: 4px;
+  /* Раньше white-space: nowrap — текст-подсказка тут бывает длинным
+     ("14 дней с подачи заявления в МГС прошло — проверьте вручную") и
+     вылезал за границу столбца «Ссылка», а не переносился. */
+  white-space: normal; max-width: 100%; display: inline-block;
+}
+.link-status-up { background: #FBEEEC; color: var(--danger); }
+.link-status-down { background: #EAF6EF; color: var(--success); }
+.r-num { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; }
+.r-source { font-size: 11px; }
+
+.no-results { padding: 30px; text-align: center; color: var(--text-muted); background: var(--panel); border-radius: var(--radius); border: 1px dashed var(--line); }
+
+.section-title { font-size: 15px; font-weight: 700; color: var(--navy); margin: 0; }
+
+.row-actions { display: flex; gap: 6px; white-space: nowrap; }
+.row-btn {
+  font-family: inherit; font-size: 11.5px; font-weight: 600; padding: 5px 9px;
+  border-radius: 7px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--text-muted); cursor: pointer;
+}
+.row-btn:hover { background: #F0EDE7; color: var(--text); }
+.row-btn.danger { color: var(--danger); border-color: #E3C6C1; }
+.row-btn.danger:hover { background: #FBEEEC; }
+.row-btn.copied { color: var(--success); border-color: #BEE3CC; background: #EAF6EF; }
+
+.add-row-form {
+  display: grid; grid-template-columns: 1.4fr 1fr 1.4fr auto; gap: 8px;
+  margin-top: 14px; align-items: center;
+}
+.add-row-form input {
+  padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
+  font-family: inherit; font-size: 13px;
+}
+.add-row-form input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+@media (max-width: 900px) {
+  .add-row-form { grid-template-columns: 1fr; }
+}
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,33,66,0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+  padding: 20px;
+}
+.modal {
+  background: #fff; border-radius: 14px; padding: 26px 28px; width: 100%; max-width: 460px;
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(15,33,66,0.25);
+}
+.modal-wide { max-width: 560px; }
+.modal h2 { margin: 0 0 16px; font-size: 19px; }
+.modal label {
+  display: block; font-size: 12.5px; font-weight: 600; color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.modal input, .modal textarea, .modal select {
+  width: 100%; margin-top: 6px; padding: 9px 11px; border-radius: 8px;
+  border: 1px solid var(--line); font-family: inherit; font-size: 13.5px; color: var(--text);
+  resize: vertical; background: #fff;
+}
+.modal input:focus, .modal textarea:focus, .modal select:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+.settings-status { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.status-badge { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); }
+.status-badge.ok { background: #EAF6EF; border-color: #BEE3CC; color: var(--success); }
+.status-badge.off { background: #FBEEEC; border-color: #E3C6C1; color: var(--danger); }
+
+.site-directory { display: flex; flex-direction: column; gap: 8px; margin: 18px 0 10px; }
+.site-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 14px;
+}
+.site-row-name { font-weight: 600; font-size: 13.5px; }
+.site-row-url { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 2px; word-break: break-all; }
+.site-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.site-search-bar { display: flex; gap: 10px; margin: 20px 0; align-items: flex-end; }
+.site-search-bar textarea {
+  flex: 1; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--line);
+  font-family: inherit; font-size: 14px; resize: vertical; min-height: 44px;
+}
+.site-search-bar textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+code { background: #F0EDE7; padding: 1px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.92em; }
+
+.blocking-filter { margin: 4px 0 16px; }
+.blocking-filter-compact { margin: 0 0 6px; }
+.blocking-selection-bar-compact { margin-bottom: 6px !important; }
+.blocking-filter select {
+  padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line);
+  font-family: inherit; font-size: 13px; background: var(--panel);
+}
+.blocking-table-wrap {
+  overflow: auto;
+  border-radius: var(--radius);
+  flex: 1;
+  min-height: 0; /* классическая ловушка flex: без этого блок не сжимается
+    обратно и тянет за собой всю страницу вместо собственной прокрутки —
+    тот же приём, что и у .main выше */
+}
+.blocking-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #FAF8F5; /* тот же цвет, что и обычный фон заголовка (.results-table th) —
+    иначе будет виден скачок цвета в момент, когда заголовок "прилипает" сверху при прокрутке */
+}
+.blocking-table {
+  min-width: 1950px;
+  overflow: visible;
+  /* overflow: visible переопределяет overflow: hidden, унаследованный от
+     .results-table — тот тоже ломает position: sticky (вторая причина,
+     не только border-collapse выше). Скруглённые углы и сама прокрутка
+     всё равно работают — за них отвечает .blocking-table-wrap снаружи. */
+  /* Ширина столбцов «Произведение»/«Ссылка» — раньше жёстко 150px/300px,
+     теперь переменные: значения по умолчанию, перетаскиванием ручки в
+     заголовке (см. .col-resize-handle и initColumnResize в app.js)
+     пользователь меняет их под себя, выбор запоминается в localStorage
+     (только в этом браузере, не общий для всех). */
+  /* Ширина столбцов «Дата обнаружения»/«Произведение»/«Ссылка» — раньше
+     жёстко зашита (или у «Дата обнаружения» — просто "как получится" по
+     содержимому, из-за чего колонка растягивалась шире, чем нужно),
+     теперь переменные: значения по умолчанию, перетаскиванием ручки в
+     заголовке (см. .col-resize-handle и initColumnResize в app.js)
+     пользователь меняет их под себя, выбор запоминается в localStorage
+     (только в этом браузере, не общий для всех). */
+  --col-discovered-width: 175px;
+  --col-title-width: 150px;
+  --col-link-width: 300px;
+}
+.blocking-table th { white-space: nowrap; }
+.blocking-table th.col-resizable {
+  overflow: hidden; text-overflow: ellipsis; /* при сильном уменьшении ширины текст заголовка аккуратно обрезается многоточием, а не вылезает за колонку */
+}
+/* «Дата обнаружения» (2-я колонка) — не входит в закреплённые при
+   прокрутке (чекбокс/Произведение/Ссылка чуть ниже), но ширину тоже
+   можно тянуть — та же переменная, что и у остальных изменяемых
+   столбцов, просто без position: sticky. */
+.blocking-table tbody tr:not(.blocking-author-header) td:nth-child(2), .blocking-table thead th:nth-child(2) {
+  width: var(--col-discovered-width); min-width: var(--col-discovered-width); max-width: var(--col-discovered-width);
+  overflow: hidden;
+}
+/* Закрепление «чекбокс/Произведение/Ссылка» слева при горизонтальной
+   прокрутке — чтобы всегда было видно, с какой именно ссылкой сейчас
+   идёт работа, даже пролистав таблицу далеко вправо. Ширина этих трёх
+   колонок задаётся явно (min-width = max-width = width) — без этого
+   position: sticky с left не сможет надёжно посчитать смещение соседних
+   закреплённых колонок. Строка-заголовок автора (colspan на всю ширину,
+   один <td>) исключена отдельно — иначе те же правила ошибочно применили
+   бы фиксированную узкую ширину и к ней тоже.
+   «Дата обнаружения» (2-я колонка) намеренно НЕ входит в закреплённые —
+   вставлена между чекбоксом (1) и «Произведение» (3). */
+.blocking-table tbody tr:not(.blocking-author-header) td:nth-child(1), .blocking-table thead th:nth-child(1) {
+  position: sticky; left: 0; z-index: 1; min-width: 32px; max-width: 32px;
+  background: var(--panel);
+}
+.blocking-table tbody tr:not(.blocking-author-header) td:nth-child(3), .blocking-table thead th:nth-child(3) {
+  position: sticky; left: 32px; z-index: 1;
+  width: var(--col-title-width); min-width: var(--col-title-width); max-width: var(--col-title-width);
+  background: var(--panel);
+  overflow: hidden;
+}
+.blocking-table tbody tr:not(.blocking-author-header) td:nth-child(4), .blocking-table thead th:nth-child(4) {
+  position: sticky; left: calc(32px + var(--col-title-width)); z-index: 1;
+  width: var(--col-link-width); min-width: var(--col-link-width); max-width: var(--col-link-width);
+  background: var(--panel);
+  /* без overflow: hidden — в отличие от «Произведение» рядом, эта ячейка
+     законно растягивается по высоте (статус проверки ссылки, отметка о
+     подаче заявления, выбор периодичности проверки — несколько строк
+     друг под другом), обрезать её по вертикали было бы неправильно.
+     Горизонтальное переполнение и так под контролем — у .r-url и
+     .link-status-badge внутри свои max-width/перенос. */
+  box-shadow: 2px 0 4px rgba(0,0,0,0.06); /* тонкая тень справа — заметнее граница закреплённой части при прокрутке */
+}
+.blocking-table thead th:nth-child(1), .blocking-table thead th:nth-child(3), .blocking-table thead th:nth-child(4) {
+  z-index: 3; /* выше обычных закреплённых ячеек тела и обычного закреплённого заголовка — угол таблицы должен быть поверх всего */
+}
+.blocking-table tbody tr:not(.blocking-author-header):hover td:nth-child(1),
+.blocking-table tbody tr:not(.blocking-author-header):hover td:nth-child(3),
+.blocking-table tbody tr:not(.blocking-author-header):hover td:nth-child(4) {
+  background: #FCFBF9; /* тот же цвет, что и обычный hover (.results-table tr:hover td) — без этого явный background: var(--panel) выше перекрыл бы подсветку строки под курсором именно в закреплённых колонках */
+}
+
+/* Ручка изменения ширины столбца — тонкая полоска у правого края
+   заголовка «Произведение»/«Ссылка». overflow: visible на th нужен,
+   чтобы ручка могла чуть выступать за границу заголовка и было удобнее
+   попасть в неё курсором (сама область-приёмник шире видимой линии). */
+.col-resizable { position: relative; overflow: visible !important; }
+.col-resize-handle {
+  position: absolute; top: 0; right: -4px; bottom: 0; width: 8px;
+  cursor: col-resize; z-index: 4; touch-action: none;
+}
+.col-resize-handle::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px;
+  background: transparent;
+}
+.col-resize-handle:hover::after, .col-resize-handle.col-resizing::after {
+  background: var(--gold);
+}
+
+
+.blocking-table td { vertical-align: top; }
+/* ВАЖНО: ни один из этих классов больше не вешается на <td> напрямую —
+   display:flex на самой ячейке таблицы ломает табличную раскладку в
+   Chromium (ячейка перестаёт быть частью строки, колонки расползаются).
+   Вместо этого классы применяются к внутреннему <div>-обёртке внутри
+   <td> (см. renderBlockingRow в app.js), а сама <td> остаётся обычной
+   table-cell без переопределения display. */
+.presence-cell { display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
+.presence-cell label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); cursor: pointer; }
+.presence-cell input[type="checkbox"] { margin: 0; cursor: pointer; }
+.blocking-table input[type="text"],
+.blocking-table input[type="date"],
+.blocking-table input[type="email"] {
+  width: 100%; min-width: 100px; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--line); font-family: inherit; font-size: 12.5px;
+  height: 30px; box-sizing: border-box;
+}
+/* «Примечания» — раньше однострочный input, длинный текст физически
+   нельзя было прочитать. Теперь textarea: по умолчанию тоже 1 строка
+   (не растягивает таблицу зря), но по клику (см. autoSize в app.js)
+   раскрывается на всю высоту содержимого, а при потере фокуса сжимается
+   обратно, если снова умещается в одну строку. */
+.notes-textarea {
+  width: 100%; min-width: 110px; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--line); font-family: inherit; font-size: 12.5px;
+  height: 30px; min-height: 30px; box-sizing: border-box; resize: none;
+  overflow: hidden; line-height: 1.35;
+}
+.notes-textarea:focus { overflow: visible; }
+.ip-cell { display: flex; gap: 4px; align-items: flex-start; }
+.ip-cell input { min-width: 90px; }
+.ip-cell .row-btn { padding: 5px 7px; flex-shrink: 0; }
+.date-copy-text {
+  width: 78px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted);
+  background: #F6F4F1; border: 1px solid var(--line); border-radius: 6px; padding: 6px 5px;
+  flex-shrink: 0; cursor: text; height: 30px; box-sizing: border-box;
+}
+/* claim_date/court_ruling_date/block_date раньше были голым <input
+   type="date"> прямо в <td> — теперь (см. renderBlockingRow) обёрнуты в
+   тот же .rkn-cell-date-row, что и остальные поля с копированием, чтобы
+   высота строки не "прыгала" в зависимости от того, есть ли в конкретной
+   ячейке ещё и текст-копия с кнопкой — все три элемента (input, текст,
+   кнопка) теперь одной высоты (30px) вне зависимости от того, сколько
+   из них показано в конкретной ячейке. */
+.rkn-cell-date-row { display: flex; flex-direction: row; align-items: center; gap: 4px; }
+/* Настоящая причина пропадавшей кнопки 🔗 (копировать ссылку) у «Дата
+   обнаружения»: общее правило чуть выше даёт <input type="date">
+   width: 100% — вне флекс-ряда это нормально, но ВНУТРИ него width:100%
+   становится flex-basis, то есть элемент "хочет" быть шириной во весь
+   ряд целиком. Упирается в свой же min-width: 100px и дальше сжиматься
+   не может — а .date-copy-text защищён (flex-shrink: 0 у него уже был),
+   так что ВСЁ недостающее место при нехватке ширины забирал единственный
+   оставшийся элемент без защиты — кнопка, и сжимало её до нуля,
+   отсюда и невидимая кнопка именно в строках, где уже проставлена дата
+   (там элементов трое, а не два, и места чуть меньше). */
+.rkn-cell-date-row input[type="date"] { flex: 1 1 90px; width: auto; min-width: 90px; }
+.rkn-cell-date-row .row-btn { flex-shrink: 0; padding: 5px 7px; }
+
+/* Раздел «Архив» — сворачиваемый блок на каждого автора (не на каждую
+   ссылку, по прямой просьбе пользователя) через нативный <details>/
+   <summary>, без лишнего JS для сворачивания-разворачивания. */
+.archive-author-block {
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 16px; margin-bottom: 10px;
+}
+.archive-author-block summary {
+  cursor: pointer; list-style: none; padding: 4px 0; font-size: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.archive-author-block summary::-webkit-details-marker { display: none; }
+.archive-author-block summary::before {
+  content: "▸"; color: var(--text-muted); transition: transform 0.15s;
+}
+.archive-author-block[open] summary::before { transform: rotate(90deg); }
+.archive-author-count { color: var(--text-muted); font-weight: 400; font-size: 12.5px; }
+.archive-links-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+.archive-links-table th {
+  text-align: left; font-weight: 600; color: var(--text-muted); font-size: 11px;
+  padding: 4px 8px 6px 0; border-bottom: 1px solid var(--line);
+}
+.archive-links-table td { padding: 8px 8px 8px 0; vertical-align: top; border-top: 1px solid var(--line); }
+.archive-links-table tr:first-child td { border-top: none; }
+
+.email-cell { display: flex; gap: 4px; align-items: flex-start; }
+.email-cell input { min-width: 130px; }
+.email-cell .row-btn { padding: 5px 7px; flex-shrink: 0; }
+.translit-cell { display: flex; gap: 4px; align-items: flex-start; }
+.translit-cell input { min-width: 110px; flex: 1; }
+.translit-cell .row-btn { padding: 5px 7px; flex-shrink: 0; }
+.rkn-cell {
+  display: flex; flex-direction: row; flex-wrap: nowrap; gap: 4px; align-items: center; min-width: 220px;
+  /* было flex-direction: column (поля друг под другом) — при нескольких
+     таких ячейках подряд в одной строке (обращение в РКН, повторное
+     обращение) это делало саму строку в разы выше обычной и визуально
+     рассинхронизировало её с однострочным заголовком таблицы. Теперь
+     таблица растёт вширь, а не строка вниз. */
+}
+.rkn-cell input { min-width: 100px; }
+.rkn-decision-cell { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 6px; align-items: center; min-width: 160px; }
+.rkn-decision-cell select { min-width: 130px; }
+.avito-cell {
+  display: flex; flex-direction: row; flex-wrap: nowrap; gap: 4px; align-items: center; min-width: 240px;
+  /* тот же принцип раскладки, что и у .rkn-cell, но отдельный класс —
+     переиспользование rkn-cell тут однажды уже сбивало тест на порядок
+     колонок (он ищет первое совпадение класса-маркера в разметке строки) */
+}
+.avito-cell input { min-width: 100px; }
+.avito-cell select { min-width: 90px; }
+.complaints-fixed-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+}
+.complaints-fixed-row b { min-width: 90px; }
+.cell-last-actions { display: flex; flex-direction: column; gap: 4px; min-width: 110px; }
+.blocking-table input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.blocking-status-select {
+  width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+}
+.blocking-status-select[data-status="заблокировано"] { background: #EAF6EF; border-color: #BEE3CC; color: var(--success); }
+.blocking-status-select[data-status="отклонено"] { background: #FBEEEC; border-color: #E3C6C1; color: var(--danger); }
+.blocking-status-select[data-status="нет реакции"] { background: #F1EFE8; border-color: #D3D1C7; color: #5F5E5A; }
+
+.blocking-author-header td {
+  background: var(--navy); color: #fff; font-weight: 700; font-size: 13px;
+  padding: 10px 14px !important;
+}
+/* .blocking-table переиспользует класс .results-table, чей общий hover-стиль
+   (.results-table tr:hover td { background: #FCFBF9 }) иначе перекрашивает
+   и эту тёмную строку-заголовок автора в светлый фон, из-за чего белый
+   текст становится нечитаемым. Точечно фиксируем тёмный фон при наведении
+   именно на строку-заголовок автора. */
+.blocking-table .blocking-author-header:hover td { background: var(--navy); }
+.blocking-author-count { color: var(--gold-light); font-weight: 400; font-size: 12px; }
+
+.documents-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 260px; overflow-y: auto; }
+.document-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.document-row-info { min-width: 0; }
+.document-row-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-row-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+.document-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.document-type-badge {
+  display: inline-block; font-size: 10.5px; font-weight: 600; padding: 2px 7px;
+  border-radius: 999px; background: var(--gold-light); color: #5a4522; margin-right: 6px;
+}
+
+.document-upload-form { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+.document-upload-form label {
+  display: block; font-size: 12.5px; font-weight: 600; color: var(--text-muted);
+}
+.document-upload-form input, .document-upload-form select {
+  width: 100%; margin-top: 6px; padding: 9px 11px; border-radius: 8px;
+  border: 1px solid var(--line); font-family: inherit; font-size: 13.5px; color: var(--text);
+}
+
+.screenshots-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px; margin-bottom: 16px; max-height: 380px; overflow-y: auto; padding: 2px;
+}
+.screenshot-card {
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  background: var(--panel); display: flex; flex-direction: column;
+}
+.screenshot-thumb {
+  display: block; width: 100%; height: 100px; object-fit: cover; background: #F0EDE7;
+}
+.screenshot-thumb-file {
+  display: flex; align-items: center; justify-content: center; height: 100px;
+  font-size: 13px; color: var(--text-muted); text-decoration: none;
+}
+.screenshot-card-meta { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.screenshot-card-meta .document-row-actions { margin-top: 4px; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: sticky; top: 0; z-index: 10; }
+  .main { padding: 20px; }
+}
+
+/* ---------- аналитика ---------- */
+.analytics-block { margin-bottom: 36px; }
+.analytics-subtitle { font-size: 14px; font-weight: 600; margin: 0 0 8px; color: var(--text-muted); }
+.analytics-chart {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 16px; margin: 12px 0;
+}
+.analytics-svg { width: 100%; height: auto; display: block; }
+.analytics-legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 12px; color: var(--text-muted); }
+.analytics-legend-item { display: flex; align-items: center; gap: 6px; }
+.analytics-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.analytics-two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
+.analytics-total-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 20px; text-align: center;
+}
+.analytics-total-number { font-size: 32px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+
+.analytics-override-badge {
+  display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 999px;
+  background: #FDECC8; color: #8A6416; font-weight: 600; white-space: nowrap;
+  /* тот же мягкий жёлтый, что и подсветка ручных поправок в .xlsx-отчёте
+     (см. backend/reports.py, _write_monthly_sheet) — одинаковый визуальный
+     язык между экраном и скачиваемым файлом */
+}
+.analytics-row-overridden { background: #FFFBF2; }
+.analytics-editable-table .analytics-value-input {
+  width: 80px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+}
+
+.rkn-resend-badge {
+  display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 999px;
+  background: #FDECEA; color: var(--danger); font-weight: 600; white-space: nowrap; flex-shrink: 0;
+}
+
+.petition-overdue-banner {
+  background: #FFF6E5; border: 1px solid var(--gold-light); border-radius: var(--radius);
+  padding: 10px 16px; margin-bottom: 12px; font-size: 13px; color: #7A5B26; font-weight: 600;
+}
+
+.stage-not-needed {
+  color: #B7B2A8; font-size: 16px; user-select: none;
+  /* «—» вместо полей ввода в столбцах, которые не понадобились —
+     заблокировано было ещё на более раннем этапе */
+}
+
+.blocking-table input:disabled {
+  background: #F1EFE8; color: #A9A399; cursor: not-allowed;
+  /* поле «Жалоба в Google DMCA», когда ссылка не отмечена в выдаче Google — 
+     заполнять его в этом случае нет смысла */
+}
+
+.form-row { display: flex; gap: 12px; }
+.form-row label { flex: 1; }
+
+.admin-submenu { display: flex; flex-direction: column; gap: 6px; padding-left: 10px; }
+.admin-submenu .btn { font-size: 12.5px; padding: 8px 12px; }
+
+/* ==========================================================================
+   Временно скрыто (периодически глючит) — по просьбе пользователя,
+   16.09.2026. Ничего не удалено: ни разметка, ни JS-обработчики не
+   тронуты, элементы просто не отображаются. Чтобы вернуть — удалить
+   этот блок целиком (или закомментировать).
+   ========================================================================== */
+
+/* Столбец «Адрес ответчика» (7-й столбец — после добавления колонки
+   «Дата обнаружения» сдвинулся с 6-го на 7-й) — в обеих таблицах, у
+   которых общий класс .blocking-table (обычная «Блокировка» и
+   «Постоянно блокируемые ссылки»), т.к. строки рендерятся одной и той же
+   функцией renderBlockingRow() и порядок столбцов у них идентичен. */
+.blocking-table th:nth-child(7),
+.blocking-table td:nth-child(7) {
+  display: none !important;
+}
+
+/* Столбец «Скриншоты» (9-й столбец, был 8-м — та же причина сдвига;
+   кнопка «📷 N» открывающая раздел скриншотов по ссылке) — тем же
+   способом, в обеих таблицах. */
+.blocking-table th:nth-child(9),
+.blocking-table td:nth-child(9) {
+  display: none !important;
+}
+
+/* Кнопки автоматических скриншотов:
+   — «📸 Сделать автоматический скриншот» в модальном окне «Скриншоты»;
+   — «📋 Автоматический скриншот 2ip.io» (подтверждение хостинга/IP)
+     в столбце «IP-адрес» каждой строки таблицы блокировки. */
+#autoShotBtn,
+[data-act="capture-whois"] {
+  display: none !important;
+}
+
+/* Раздел подготовки заявления в суд — кнопка появляется в панели
+   действий после выбора ссылок галочками. */
+#preparePetitionBtn {
+  display: none !important;
+}
+/* ========================================================================== */
+
+/* ---------- Обращения МГС/РКН (обновление 23.09) ---------- */
+.appeals-cell { display: flex; flex-direction: column; gap: 6px; min-width: 760px; }
+.appeal-block { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+.appeal-num { font-weight: 700; font-size: 12px; color: var(--text-muted); width: 26px; flex-shrink: 0; }
+.appeal-group { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border: 1px solid var(--line); border-radius: 8px; background: #FBFAF8; }
+.appeal-tag { font-size: 10.5px; font-weight: 700; letter-spacing: .03em; color: var(--text-muted); text-transform: uppercase; padding: 0 2px; }
+.appeals-cell input[type="date"], .appeal-block-date input[type="date"] { width: 128px; min-width: 128px; }
+.appeals-cell input[type="text"] { width: 120px; min-width: 100px; }
+.appeals-cell input[data-appeal="rkn_number"] { width: 160px; }
+.appeals-cell select { width: 150px; min-width: 150px; flex: 0 0 150px; }
+.appeal-add-btn { align-self: flex-start; }
+.appeal-block-date { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.appeal-summary-line { font-size: 12px; line-height: 1.45; white-space: nowrap; }
+.link-check-details { font-size: 11px; color: var(--text-muted); margin-top: 4px; max-width: 240px; word-break: break-word; }
+.link-check-warn { color: var(--danger); font-weight: 600; }
+.row-btn-confirm { background: #EAF6EF; border-color: #BEE3CC; color: var(--success); }
+.row-btn-tiny { font-size: 10.5px; padding: 2px 6px; margin: 2px 0; }
+input[type="date"].date-copied { outline: 2px solid var(--success); }
+
+/* Длинный заголовок без пробелов (у ссылок, добавленных вручную, заголовок —
+   это сам адрес) раньше вылезал из колонки «Ссылка» на «В выдаче»:
+   переносим по любому символу и ограничиваем тремя строками, полный текст —
+   во всплывающей подсказке. */
+.blocking-table tbody td:nth-child(4) { overflow-wrap: anywhere; word-break: break-word; }
+.blocking-table tbody td:nth-child(4) .r-title {
+  overflow-wrap: anywhere; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ---------- Источники, справочник сайтов, сертификат (обновление 23.09) ---------- */
+.source-report { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #FBFAF8; font-size: 13px; }
+.source-report-title { font-weight: 700; margin-bottom: 4px; }
+.source-report-row { padding: 2px 0; }
+.source-report-row.source-error { color: var(--danger); }
+.source-report-row.source-not_configured { color: var(--text-muted); }
+.source-report details { margin-top: 6px; }
+.checkbox-inline.source-off { opacity: .55; }
+.site-dir-toolbar { display: flex; gap: 10px; align-items: center; margin: 12px 0 4px; flex-wrap: wrap; }
+.site-badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 10px; background: #EEEAE4; color: var(--text-muted); margin-left: 4px; }
+.site-badge-high { background: #FFF3D6; color: #8A6100; }
+.site-status-ok, .site-status-empty { background: #EAF6EF; color: var(--success); }
+.site-status-no_template, .site-status-blocked, .site-status-unavailable, .site-status-error { background: #FBECEA; color: var(--danger); }
+.site-row-notes { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.cert-warning { background: #FBECEA; color: var(--danger); border: 1px solid #F0C7C2; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600; }
+.cr-period { display: flex; gap: 12px; flex-wrap: wrap; }
+.cr-period label { flex: 1; min-width: 160px; }
+.cr-works-block { margin: 8px 0; }
+.cr-works-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.cr-works { max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.cr-works-author { margin-bottom: 6px; }
+.cr-works-author-name { font-weight: 700; font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.cr-works .checkbox-inline-standalone { display: block; margin: 2px 0; }
+.cr-works label.checkbox-inline-standalone { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.cr-works label.checkbox-inline-standalone input { width: auto; margin: 0; flex: 0 0 auto; }

@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мониторинг пиратского контента</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">RN</div>
+      <div class="brand-text">
+        <div class="brand-name">Мониторинг ИС</div>
+        <div class="brand-sub">поиск пиратских копий</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="newAuthorBtn">+ Новый автор</button>
+    <button class="btn btn-ghost btn-block" id="runAllBtn">▶ Искать по всем активным</button>
+    <button class="btn btn-danger-ghost btn-block hidden" id="stopAllBtn">⏹ Остановить всё</button>
+    <div class="run-all-status hidden" id="runAllStatus"></div>
+
+    <div class="tree" id="tree"></div>
+
+    <div class="sidebar-footer">
+      <button class="btn btn-ghost btn-block" id="blockingBtn">🚫 Блокировка</button>
+      <button class="btn btn-ghost btn-block" id="archiveBtn">📁 Архив</button>
+      <button class="btn btn-ghost btn-block" id="siteSearchBtn">🔎 Поиск по сайтам</button>
+      <button class="btn btn-ghost btn-block hidden" id="adminMenuToggleBtn">⚙️ Администрирование <span id="adminMenuCaret">▾</span></button>
+      <div class="admin-submenu hidden" id="adminSubmenu">
+        <button class="btn btn-ghost btn-block" id="auditLogBtn">📋 Журнал действий</button>
+        <button class="btn btn-ghost btn-block" id="complaintSendLogBtn">📨 Журнал отправок</button>
+        <button class="btn btn-ghost btn-block" id="analyticsBtn">📊 Аналитика</button>
+        <button class="btn btn-ghost btn-block" id="accessBtn">👤 Доступ</button>
+        <button class="btn btn-ghost btn-block" id="templatesBtn">✉️ Шаблоны</button>
+        <button class="btn btn-ghost btn-block" id="requisitesBtn">🏢 Заказчик и реквизиты</button>
+        <button class="btn btn-ghost btn-block" id="documentAccessBtn">🔑 Доступ к документам</button>
+        <button class="btn btn-ghost btn-block" id="accountingBtn">💰 Бухгалтерия</button>
+      </div>
+      <button class="btn btn-ghost btn-block hidden" id="myDocumentsBtn">🗂 Мои документы</button>
+      <button class="btn btn-ghost btn-block" id="settingsBtn">Настройки и блок-лист</button>
+      <div class="user-row hidden" id="userRow">
+        <span id="userNameLabel"></span>
+        <form method="post" action="/logout"><button type="submit" class="row-btn">Выйти</button></form>
+      </div>
+      <div class="status-pill" id="modeIndicator">…</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div id="certWarning" class="cert-warning hidden"></div>
+    <div id="emptyState" class="empty-state">
+      <div class="empty-emoji">🕵️</div>
+      <h2>Выберите произведение слева</h2>
+      <p>Или добавьте автора, затем — произведение: укажите поисковый запрос, ключевые и стоп-слова, источники поиска и запустите мониторинг.</p>
+    </div>
+
+    <!-- Отдельный раздел: ссылки, взятые в работу по блокировке -->
+    <div id="blockingView" class="project-view hidden">
+      <header class="view-header view-header-compact">
+        <div>
+          <h1>Блокировка
+            <details class="header-info-toggle">
+              <summary title="Что это за раздел">ⓘ</summary>
+              <div class="header-info-body">
+                Ссылки, отмеченные «В блокировку» из результатов поиска — дальнейшая работа по каждой ведётся здесь.<br>
+                Помесячный отчёт включает дела, у которых дата претензии, дата определения Мосгорсуда или дата блокировки приходится на выбранный месяц — с графами: дата претензии, № определения Мосгорсуда, дата определения, дата блокировки, повторное решение, обращение в РКН (номер, дата подачи, решение), статус.
+              </div>
+            </details>
+          </h1>
+        </div>
+        <div class="view-actions">
+          <input type="month" id="reportMonth">
+          <button class="btn btn-ghost" id="downloadMonthlyReportBtn">📅 Отчёт за месяц (.xlsx)</button>
+          <button class="btn btn-ghost hidden" id="openClientReportBtn" title="Отчёт по защите ИС для заказчика — по форме юрфирмы, за любой период">📄 Отчёт для заказчика</button>
+          <button class="btn btn-primary" id="finalizeMonthlyReportBtn" title="Скачивает тот же отчёт и убирает вошедшие в него дела из активной таблицы в архив">✅ Завершить месяц и заархивировать</button>
+          <button class="btn btn-ghost" id="exportBlockingCsvBtn">Скачать CSV (всё)</button>
+        </div>
+      </header>
+
+      <div id="petitionOverdueBanner" class="petition-overdue-banner hidden"></div>
+
+      <div class="blocking-filter blocking-filter-compact">
+        <label>Статус:
+          <select id="blockingStatusFilter">
+            <option value="">Все</option>
+          </select>
+        </label>
+        <label>Автор:
+          <select id="blockingAuthorFilter">
+            <option value="">Все</option>
+          </select>
+        </label>
+        <label>Произведение:
+          <select id="blockingWorkFilter">
+            <option value="">Все</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="blockingSelectionActionBar" class="hint-text hidden blocking-selection-bar-compact" style="margin-bottom:8px;">
+        <span id="blockingSelectionInfo"></span>
+        <button class="btn btn-primary" id="preparePetitionBtn" style="margin-left:10px;">Подготовить заявление</button>
+        <button class="btn btn-primary" id="downloadRknExportTxtBtn" style="margin-left:6px;" title="Список ссылок, по одной на строку — для загрузки в форму на сайте Роскомнадзора">Скачать для РКН (.txt)</button>
+        <button class="btn btn-ghost" id="downloadRknExportCsvBtn" style="margin-left:6px;" title="То же самое, но с доп. графами (ответчик, IP, № и дата определения Мосгорсуда) — для собственного учёта">.csv</button>
+        <button class="btn btn-ghost" id="clearBlockingSelectionBtn" style="margin-left:6px;">Снять выбор</button>
+      </div>
+      <div class="blocking-table-wrap">
+        <table class="results-table blocking-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="col-resizable">Дата обнаружения<span class="col-resize-handle" data-col="discovered" title="Потяните, чтобы изменить ширину столбца"></span></th>
+              <th class="col-resizable">Произведение<span class="col-resize-handle" data-col="title" title="Потяните, чтобы изменить ширину столбца"></span></th>
+              <th class="col-resizable">Ссылка<span class="col-resize-handle" data-col="link" title="Потяните, чтобы изменить ширину столбца"></span></th>
+              <th>В выдаче</th>
+              <th>Ответчик</th>
+              <th>Адрес ответчика</th>
+              <th>IP-адрес</th>
+              <th>Скриншоты</th>
+              <th>Email ответчика</th>
+              <th>Дата претензии</th>
+              <th>Решение по претензии</th>
+              <th>Жалобы</th>
+              <th>Обращения: МГС (дата определения, №) → РКН (дата, №) → статус</th>
+              <th>Примечания</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="blockingBody"></tbody>
+        </table>
+        <div id="blockingEmpty" class="no-results hidden">Пока ничего не взято в работу — отметьте ссылку «→ В блокировку» в результатах поиска.</div>
+      </div>
+      <datalist id="defendantSuggestions"></datalist>
+    </div>
+
+    <!-- Отдельный раздел: журнал действий -->
+    <div id="auditLogView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ</div>
+          <h1>Журнал действий</h1>
+          <div class="pv-query">Кто и что менял — авторы, произведения, дела блокировки, документы, скриншоты</div>
+        </div>
+      </header>
+      <table class="results-table">
+        <thead>
+          <tr><th>Когда</th><th>Кто</th><th>Действие</th><th>Подробности</th></tr>
+        </thead>
+        <tbody id="auditLogBody"></tbody>
+      </table>
+      <div id="auditLogEmpty" class="no-results hidden">Журнал пуст.</div>
+    </div>
+
+    <!-- Отдельный раздел: журнал отправок (только для admin) -->
+    <div id="complaintSendLogView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ · ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА</div>
+          <h1>Журнал отправок</h1>
+          <div class="pv-query">Претензии, жалобы Avito/Google DMCA, заявления в суд и обращения в РКН — кто, когда и по какой ссылке отправил</div>
+        </div>
+      </header>
+      <table class="results-table">
+        <thead>
+          <tr><th>Когда</th><th>Кто</th><th>Что отправлено</th><th>Автор / произведение</th><th>Ссылка</th><th>Дата в поле</th><th>Способ (Avito)</th></tr>
+        </thead>
+        <tbody id="complaintSendLogBody"></tbody>
+      </table>
+      <div id="complaintSendLogEmpty" class="no-results hidden">Журнал пуст — пока ничего не отправлялось.</div>
+    </div>
+
+    <!-- Отдельный раздел: аналитика (только для admin) -->
+    <div id="analyticsView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ · ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА</div>
+          <h1>Аналитика</h1>
+          <div class="pv-query">Помесячная динамика — сколько обнаружено, сколько заблокировано, как быстро отрабатывает цепочка</div>
+        </div>
+        <div class="view-actions">
+          <select id="analyticsMonthsSelect">
+            <option value="6">Последние 6 месяцев</option>
+            <option value="12" selected>Последние 12 месяцев</option>
+            <option value="24">Последние 24 месяца</option>
+          </select>
+          <button class="btn btn-primary" id="analyticsBuildReportBtn">📄 Скачать отчёт (.xlsx)</button>
+        </div>
+      </header>
+
+      <section class="analytics-block">
+        <h2 class="section-title">1. Сколько обнаружено (по месяцам)</h2>
+        <p class="hint-text">Новые ссылки, добавленные в раздел «Блокировка» — из журнала действий, поэтому цифры есть даже за месяцы до появления этого раздела.</p>
+        <div id="analyticsDetectedChart" class="analytics-chart"></div>
+        <div class="analytics-two-col">
+          <div>
+            <h3 class="analytics-subtitle">Значения по месяцам (можно поправить вручную)</h3>
+            <table class="results-table analytics-editable-table" id="analyticsDetectedEditTable">
+              <thead><tr><th>Месяц</th><th>Значение</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <h3 class="analytics-subtitle" style="margin-top:16px;">Топ доменов за всё время</h3>
+            <table class="results-table" id="analyticsTopDomainsTable">
+              <thead><tr><th>Домен</th><th>Обнаружено раз</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="analytics-total-card">
+            <div class="analytics-total-number" id="analyticsDetectedTotal">—</div>
+            <div class="hint-text">обнаружено ссылок за всё время</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="analytics-block">
+        <h2 class="section-title">2. Сколько реально заблокировано (по месяцам)</h2>
+        <p class="hint-text">Учитывает и активные дела, и уже перенесённые в архив после завершения месячного отчёта — архивация не теряет историю.</p>
+        <div id="analyticsBlockedChart" class="analytics-chart"></div>
+        <div class="analytics-two-col">
+          <div>
+            <h3 class="analytics-subtitle">Значения по месяцам (можно поправить вручную)</h3>
+            <table class="results-table analytics-editable-table" id="analyticsBlockedEditTable">
+              <thead><tr><th>Месяц</th><th>Значение</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <h3 class="analytics-subtitle" style="margin-top:16px;">Текущее распределение по статусам</h3>
+            <table class="results-table" id="analyticsStatusTable">
+              <thead><tr><th>Статус</th><th>Дел</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="analytics-total-card">
+            <div class="analytics-total-number" id="analyticsBlockedTotal">—</div>
+            <div class="hint-text">заблокировано за всё время</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="analytics-block">
+        <h2 class="section-title">3. Динамика: обнаружение против блокировки</h2>
+        <p class="hint-text">Два ряда на одном графике — насколько блокировка успевает за обнаружением новых ссылок.</p>
+        <div id="analyticsDynamicsChart" class="analytics-chart"></div>
+        <div class="analytics-total-card" id="analyticsMedianDelayCard">
+          <div class="analytics-total-number" id="analyticsMedianDelay">—</div>
+          <div class="hint-text" id="analyticsMedianDelayCaption">медианное число дней от добавления ссылки до фактической блокировки</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Отдельный раздел: управление доступом (только для admin) -->
+    <div id="accessView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ</div>
+          <h1>Доступ</h1>
+          <div class="pv-query">Пользователи, роли и ссылки-приглашения</div>
+        </div>
+      </header>
+
+      <h2 class="section-title">Пользователи</h2>
+      <table class="results-table">
+        <thead><tr><th>Имя</th><th>Роль</th><th>Создан</th><th></th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+
+      <h2 class="section-title" style="margin-top:24px;">Действующие ссылки-приглашения</h2>
+      <table class="results-table">
+        <thead><tr><th>Роль</th><th>Ссылка</th><th>Истекает</th><th></th></tr></thead>
+        <tbody id="invitesBody"></tbody>
+      </table>
+      <div id="invitesEmpty" class="no-results hidden">Активных приглашений нет.</div>
+
+      <div class="add-row-form" style="grid-template-columns: 1fr auto;">
+        <select id="newInviteRole">
+          <option value="viewer">Только просмотр</option>
+          <option value="editor">Редактор</option>
+        </select>
+        <button class="btn btn-primary" id="createInviteBtn">+ Создать ссылку-приглашение</button>
+      </div>
+      <p class="hint-text">Ссылка действует 7 дней и одноразовая — как только человек создаст по ней доступ, ссылка перестаёт работать. Роли: «только просмотр» — видит всё, ничего не может изменить; «редактор» — работает с авторами/произведениями/делами блокировки/документами. Администратор в системе может быть только один.</p>
+    </div>
+
+    <!-- Отдельный раздел: шаблоны писем -->
+    <div id="templatesView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ</div>
+          <h1>Шаблоны</h1>
+          <div class="pv-query">Тексты писем для автозаполнения жалоб — меняется только то, что относится к конкретной ссылке, остальной текст одинаковый для всех</div>
+        </div>
+      </header>
+
+      <h2 class="section-title">Претензия хостингу</h2>
+      <p class="hint-text">Доступные плейсхолдеры: <code>{url}</code> — ссылка на нарушение, <code>{author}</code> — автор/правообладатель, <code>{work_title}</code> — название произведения, <code>{ip}</code> — IP-адрес.</p>
+      <label>Тема письма
+        <input type="text" id="tplClaimSubject">
+      </label>
+      <label>Текст письма
+        <textarea id="tplClaimBody" rows="8"></textarea>
+      </label>
+      <div id="tplClaimCustomBadge" class="hint-text hidden">✓ Используется ваш собственный шаблон (не по умолчанию)</div>
+      <div class="modal-actions" style="margin-bottom:24px;">
+        <button class="btn btn-primary" id="tplClaimSaveBtn">Сохранить</button>
+        <button class="btn btn-ghost" id="tplClaimResetBtn">Сбросить к умолчанию</button>
+      </div>
+
+      <hr>
+      <p class="hint-text">«Заявление в суд» здесь не редактируется — это документ фиксированного юридического формата (генерируется автоматически в .docx), а не свободный текстовый шаблон, как письмо выше. Жалобы на VK/YouTube/Instagram/Facebook/Telegram/Avito и другие площадки — не отдельные шаблоны, а официальные формы этих площадок (открываются кнопкой прямо в окне «Жалобы» у каждого дела).</p>
+
+      <hr>
+      <h2 class="section-title">Другие шаблоны</h2>
+      <p class="hint-text">Для площадок без автоматической отправки (VK, YouTube, Instagram, Facebook, Telegram и т.п.) — заготовьте текст здесь один раз, дальше просто копируйте при заполнении официальной формы жалобы вручную.</p>
+      <table class="results-table">
+        <thead><tr><th>Название</th><th>Тема</th><th>Текст</th><th></th></tr></thead>
+        <tbody id="customTemplatesBody"></tbody>
+      </table>
+      <div id="customTemplatesEmpty" class="hint-text hidden">Пока ничего не добавлено.</div>
+
+      <form id="customTemplateForm" class="document-upload-form">
+        <label>Название (для себя — чтобы отличать шаблоны в списке)
+          <input type="text" id="ctName" placeholder="Например: Жалоба VK" required>
+        </label>
+        <label>Тема (необязательно — не у всех площадок есть тема письма)
+          <input type="text" id="ctSubject">
+        </label>
+        <label>Текст
+          <textarea id="ctBody" rows="6" required placeholder="Доступные плейсхолдеры: {url}, {author}, {work_title}, {ip} — подставляются вручную при копировании, автоматически не заполняются"></textarea>
+        </label>
+        <button type="submit" class="btn btn-primary" id="ctAddBtn">Добавить шаблон</button>
+      </form>
+    </div>
+
+    <!-- Отдельный раздел: заказчик и реквизиты юрфирмы -->
+    <div id="requisitesView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ</div>
+          <h1>Заказчик и реквизиты</h1>
+          <div class="pv-query">Видно только администратору</div>
+        </div>
+      </header>
+
+      <h2 class="section-title">Реквизиты юрфирмы (шапка «Акта выполненных работ»)</h2>
+      <p class="hint-text">Используются при скачивании отчёта с актом по конкретному автору — карточка автора → «Скачать отчёт с актом».</p>
+      <div class="form-row">
+        <label>Название
+          <input type="text" id="reqFirmName" placeholder="Юридический сервис «Название»">
+        </label>
+        <label>Email
+          <input type="text" id="reqFirmEmail" placeholder="info@example.com">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Телефон
+          <input type="text" id="reqFirmPhone" placeholder="+7(___) ___-__-__">
+        </label>
+        <label>Адрес
+          <input type="text" id="reqFirmAddress" placeholder="Город, улица, дом, офис">
+        </label>
+      </div>
+      <div class="modal-actions" style="margin-bottom:24px;">
+        <button class="btn btn-primary" id="reqFirmSaveBtn">Сохранить</button>
+      </div>
+
+      <hr>
+      <h2 class="section-title">Договорные условия по авторам</h2>
+      <p class="hint-text">Заказчик, номер и дата договора, стоимость услуг, тип заявителя (физлицо/ИП/юрлицо) — по каждому автору отдельно, редактируются кнопкой «Изменить» в этой же строке. Файлы (договор, доверенность, скан паспорта, подтверждение авторства) — кнопка «Документы» здесь же или значок 📄 у автора в дереве слева.</p>
+      <table class="results-table">
+        <thead><tr><th>Автор</th><th>Тип заявителя</th><th>Заказчик</th><th>№ договора</th><th>Дата договора</th><th>Стоимость по договору</th><th></th></tr></thead>
+        <tbody id="requisitesAuthorsBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Отдельный раздел: временные разрешения на документы авторов -->
+    <div id="documentAccessView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ</div>
+          <h1>Доступ к документам</h1>
+          <div class="pv-query">Паспорт, СНИЛС, документы, подтверждающие авторство — по умолчанию видно только администратору. Здесь можно временно открыть просмотр конкретному сотруднику.</div>
+        </div>
+      </header>
+
+      <p class="hint-text">Разрешение даёт только ПРОСМОТР (не скачивание файла) на выбранный срок — по одному автору или по всем сразу. Скачивание исходного файла и редактирование личных данных остаются только у администратора.</p>
+
+      <div class="form-row">
+        <label>Сотрудник
+          <select id="daEmployee"></select>
+        </label>
+        <label>Кому открыть
+          <select id="daScope">
+            <option value="author">Конкретный автор</option>
+            <option value="all">Все авторы сразу</option>
+          </select>
+        </label>
+        <label id="daAuthorLabel">Автор
+          <select id="daAuthor"></select>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Срок
+          <select id="daDurationPreset">
+            <option value="1">1 день</option>
+            <option value="3">3 дня</option>
+            <option value="7">Неделя</option>
+            <option value="custom">Своя дата…</option>
+          </select>
+        </label>
+        <label id="daCustomDateLabel" class="hidden">До какой даты
+          <input type="date" id="daCustomDate">
+        </label>
+      </div>
+      <button class="btn btn-primary" id="daGrantBtn">Выдать разрешение</button>
+
+      <hr>
+      <h2 class="section-title">Действующие разрешения</h2>
+      <table class="results-table">
+        <thead><tr><th>Сотрудник</th><th>Кому открыто</th><th>Выдал</th><th>До</th><th></th></tr></thead>
+        <tbody id="documentAccessBody"></tbody>
+      </table>
+      <div id="documentAccessEmpty" class="hint-text hidden">Действующих разрешений нет.</div>
+    </div>
+
+    <!-- Отдельный раздел: бухгалтерия (заглушка под будущую интеграцию со СБИС) -->
+    <div id="accountingView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ</div>
+          <h1>Бухгалтерия</h1>
+          <div class="pv-query">Видно только администратору</div>
+        </div>
+      </header>
+      <div class="empty-state" style="height:40vh;">
+        <div class="empty-emoji">💰</div>
+        <h2>Скоро — интеграция со СБИС</h2>
+        <p>Раздел зарезервирован под будущую синхронизацию с СБИС (акты, счета, платежи). Пока сюда ничего не подключено.</p>
+      </div>
+    </div>
+
+    <!-- Отдельный раздел "Постоянно блокируемые ссылки" убран 17.09.2026
+         по прямой просьбе — эти дела больше не выделяются в отдельный
+         раздел, а показываются прямо в "Блокировке" вместе со всеми
+         остальными, обычными строками (группировка только по автору, все
+         колонки видны, как у любого другого дела). Группировка по домену
+         и подсчёт группы (backend/chronic_links.py) никуда не делись —
+         они по-прежнему считаются на сервере и используются в бейдже "⭐
+         уже хронический" в разделе "Поиск по сайтам" и для авто-добавления
+         домена в справочник сайтов. -->
+
+    <!-- Отдельный раздел: архив завершённых дел (заблокированные ссылки,
+         перенесённые сюда автоматически или вручную) — сгруппирован по
+         автору, каждый автор сворачивается/разворачивается отдельно -->
+    <div id="archiveView" class="project-view hidden">
+      <header class="view-header view-header-compact">
+        <div>
+          <h1>Архив
+            <details class="header-info-toggle">
+              <summary title="Что это за раздел">ⓘ</summary>
+              <div class="header-info-body">
+                Завершённые дела — ссылки, у которых решение стало «заблокировано», переносятся сюда автоматически (сразу, без ожидания конца месяца) или через кнопку «Завершить месяц и заархивировать» в «Блокировке». Сгруппировано по автору — разверните автора, чтобы увидеть все его ссылки с полной историей дат сразу. Мониторинг доступности ссылки продолжается и здесь — если сайт снова окажется доступен, дело само вернётся в «Блокировку», либо можно восстановить вручную кнопкой в строке.
+              </div>
+            </details>
+          </h1>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-ghost" id="archiveRefreshBtn">🔄 Обновить</button>
+        </div>
+      </header>
+      <div id="archiveEmpty" class="hint-text hidden">Архив пока пуст.</div>
+      <div id="archiveBody"></div>
+    </div>
+
+    <!-- Отдельный раздел: прямой поиск по своему списку сайтов -->
+    <div id="siteSearchView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow">ОТДЕЛЬНЫЙ РАЗДЕЛ</div>
+          <h1>Поиск по сайтам</h1>
+          <div class="pv-query">Поиск по фамилии автора сразу на всех сайтах из вашего справочника</div>
+        </div>
+      </header>
+
+      <p class="hint-text">
+        Ведите здесь список конкретных площадок (форумы, складчины и т.п.), с которыми уже приходится работать вручную.
+        У каждого сайта — свой шаблон поисковой ссылки с плейсхолдером <code>{query}</code>, например:
+        <code>https://example-forum.ru/search/?q={query}</code>. Приложение подставит туда запрос, скачает страницу
+        и попробует вытащить из неё ссылки и заголовки. Формат страницы результатов у каждого сайта свой — точность
+        не гарантирована, особенно если сайт рендерит выдачу через JavaScript или требует вход.
+      </p>
+
+      <div class="site-dir-toolbar">
+        <select id="siteDirFilter" title="Какие сайты показать">
+          <option value="all">Все сайты</option>
+          <option value="setup">Требуют настройки</option>
+          <option value="high">Высокий приоритет</option>
+          <option value="skipped">Ручная проверка и отключённые</option>
+        </select>
+        <span class="hint-text" id="siteDirStats"></span>
+      </div>
+      <div class="site-directory" id="siteDirectory"></div>
+      <button class="btn btn-ghost" id="newSiteBtn">+ Добавить сайт</button>
+
+      <div class="site-search-bar">
+        <textarea id="siteSearchQuery" rows="3" placeholder="Один запрос на строку — можно сколько угодно вариантов, например:&#10;Андрианов GPT'S агенты скачать&#10;Андрианов GPT'S агенты складчина&#10;Андрианов GPT'S агенты слив"></textarea>
+        <button class="btn btn-primary" id="siteSearchRunBtn">Искать по всем сайтам</button>
+      </div>
+      <label class="checkbox-inline-standalone" style="margin-top:8px;">
+        <input type="checkbox" id="siteSearchShowNegKeywords">
+        Исключить результаты по стоп-словам (для однофамильцев/омонимов — например, если у известного человека с той же фамилией есть песня или товар, не имеющие отношения к делу)
+      </label>
+      <textarea id="siteSearchNegKeywords" rows="2" class="hidden" placeholder="Одно стоп-слово на строку — если хотя бы одно встретится в заголовке/описании/ссылке, результат не покажется. Например:&#10;mp3&#10;kbps&#10;песня"></textarea>
+      <p class="hint-text">Каждый вариант запроса будет проверен на каждом сайте из справочника — одинаковые найденные ссылки объединятся.</p>
+
+      <div id="siteSearchProgress" class="run-progress hidden">
+        <div class="progress-track"><div class="progress-fill" id="siteProgressFill"></div></div>
+        <div class="progress-label" id="siteProgressLabel">Запуск…</div>
+        <button class="btn btn-danger-ghost" id="stopSiteSearchBtn">⏹ Остановить</button>
+      </div>
+
+      <div id="siteSearchErrors" class="demo-banner hidden"></div>
+      <div id="siteSearchReport" class="source-report hidden"></div>
+      <div id="siteSearchRedirects" class="site-redirects-banner hidden"></div>
+
+      <section id="siteResultsBlock" class="results-block hidden">
+        <div class="results-header">
+          <h2 class="section-title">Результаты</h2>
+          <div class="results-actions">
+            <button class="btn btn-ghost" id="siteExportCsvBtn">Скачать CSV</button>
+            <button class="btn btn-ghost" id="siteCopySelectedBtn">Скопировать выбранные ссылки</button>
+          </div>
+        </div>
+        <label class="checkbox-inline-standalone">
+          Прикрепить результаты к произведению (чтобы объединить с «Поиском по произведению» в одном списке, без дублей):
+          <select id="siteSearchAttachWork">
+            <option value="">— не выбрано —</option>
+          </select>
+        </label>
+        <table class="results-table">
+          <thead>
+            <tr><th></th><th>Сайт</th><th>Заголовок</th><th>Ссылка</th><th>Найдено по запросу</th><th></th></tr>
+          </thead>
+          <tbody id="siteResultsBody"></tbody>
+        </table>
+        <div id="siteNoResults" class="no-results hidden">Ничего не найдено ни на одном сайте.</div>
+      </section>
+    </div>
+
+    <div id="workView" class="project-view hidden">
+      <header class="view-header">
+        <div>
+          <div class="eyebrow" id="pvEyebrow">ПРОИЗВЕДЕНИЕ · <span id="pvAuthor"></span></div>
+          <h1 id="pvName">—</h1>
+          <div class="pv-query" id="pvQuery">—</div>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-ghost" id="editWorkBtn">Изменить</button>
+          <button class="btn btn-danger-ghost" id="deleteWorkBtn">Удалить</button>
+          <button class="btn btn-primary" id="runBtn">▶ Запустить поиск</button>
+          <button class="btn btn-danger-ghost hidden" id="stopBtn">⏹ Остановить поиск</button>
+        </div>
+      </header>
+
+      <div class="pv-meta">
+        <div class="meta-chip">Ключевые слова: <span id="pvKeywords">—</span></div>
+        <div class="meta-chip">Стоп-слова: <span id="pvNegKeywords">—</span></div>
+        <div class="meta-chip">Страниц выдачи: <span id="pvPages">—</span></div>
+        <div class="meta-chip">Источники: <span id="pvSources">—</span></div>
+        <div class="meta-chip" id="pvExtraBlocked">Доп. исключения: —</div>
+      </div>
+
+      <div id="runProgress" class="run-progress hidden">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">Запуск…</div>
+      </div>
+
+      <div id="sourceReport" class="source-report hidden"></div>
+      <div id="demoBanner" class="demo-banner hidden">
+        Демо-режим: часть источников не настроена ключами API, для них показаны синтетические результаты. Как подключить реальный поиск — см. README.
+      </div>
+
+      <!-- Постоянный, редактируемый список результатов по произведению -->
+      <section class="results-block" id="savedBlock">
+        <div class="results-header">
+          <h2 class="section-title">Сохранённые результаты</h2>
+          <div class="results-actions">
+            <button class="btn btn-ghost" id="exportSavedCsvBtn">Скачать CSV</button>
+            <button class="btn btn-ghost" id="savedCopySelectedBtn">Скопировать выбранные ссылки</button>
+            <button class="btn btn-danger-ghost" id="clearSavedBtn">Очистить всё</button>
+          </div>
+        </div>
+        <p class="hint-text">Здесь хранится редактируемый список по этому произведению — переживает перезапуск сервера. Текст можно выделять и копировать мышкой; для каждой строки есть кнопки «Копировать» и «Удалить». Отметьте галочками несколько строк и нажмите «Скопировать выбранные ссылки», чтобы скопировать их все разом.</p>
+        <div id="savedFallbackWarning" class="demo-banner hidden">
+          ⚠️ Фильтр по ключевым словам не нашёл ни одного совпадения в последнем запуске — ниже показан
+          <b>весь необработанный список</b> найденного, без фильтрации. Проверьте формулировку поискового
+          запроса и ключевых слов у этого произведения (кнопка «Изменить»).
+        </div>
+        <table class="results-table">
+          <thead>
+            <tr><th></th><th>Источник</th><th>Заголовок и описание</th><th>Ссылка</th><th></th></tr>
+          </thead>
+          <tbody id="savedBody"></tbody>
+        </table>
+        <div id="savedEmpty" class="no-results hidden">Пока ничего не сохранено — запустите поиск или добавьте ссылку вручную ниже.</div>
+
+        <div class="add-row-form">
+          <input type="text" id="addUrl" placeholder="Ссылка (вставьте URL)">
+          <input type="text" id="addTitle" placeholder="Заголовок (необязательно)">
+          <input type="text" id="addDesc" placeholder="Описание (необязательно)">
+          <button class="btn btn-primary" id="addRowBtn">+ Добавить</button>
+        </div>
+      </section>
+
+      <!-- Результаты последнего запуска — временные, для сравнения с сохранёнными -->
+      <section id="lastRunBlock" class="results-block hidden">
+        <div class="results-header">
+          <h2 class="section-title">Результаты последнего запуска</h2>
+          <div class="results-actions">
+            <div class="view-toggle" id="viewToggle">
+              <button class="toggle-btn active" data-scope="filtered">Совпавшие с фильтром</button>
+              <button class="toggle-btn" data-scope="all">Все найденные</button>
+            </div>
+            <button class="btn btn-ghost" id="sendTelegramBtn">Отправить в Telegram</button>
+            <button class="btn btn-ghost" id="lastRunCopySelectedBtn">Скопировать выбранные ссылки</button>
+            <button class="btn btn-danger-ghost" id="clearLastRunBtn">Очистить</button>
+          </div>
+        </div>
+        <div class="funnel" id="funnel"></div>
+        <p class="hint-text">Это снимок последнего запуска. Вкладка «Совпавшие с фильтром» уже автоматически сохранена выше. Из вкладки «Все найденные» можно добавить нужные ссылки в сохранённые кнопкой «+».</p>
+        <table class="results-table">
+          <thead>
+            <tr><th></th><th>#</th><th>Источник</th><th>Заголовок и описание</th><th>Ссылка</th><th></th></tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+        <div id="noResults" class="no-results hidden">По этому набору ничего нет.</div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Author modal -->
+<div class="modal-overlay hidden" id="authorModalOverlay">
+  <div class="modal">
+    <h2 id="authorModalTitle">Новый автор</h2>
+    <label>Имя автора / правообладателя
+      <input type="text" id="aName" placeholder="Например: Иванова Мария">
+    </label>
+    <label>День начала отчётного периода
+      <input type="number" id="aReportPeriodStartDay" min="1" max="28" value="1" style="width: 90px;">
+    </label>
+    <p class="hint-text">
+      По умолчанию — 1 (обычный календарный месяц). Если у автора отчётный
+      период идёт не с 1-го числа (например, с 15-го по 14-е следующего
+      месяца) — укажи здесь день начала. Как только дело в «Блокировке»
+      становится заблокировано (и проверка ссылки подтверждает, что оно
+      действительно недоступно) — оно автоматически переносится в архив
+      отчётов именно с учётом этого периода, без ручной кнопки «Завершить
+      месяц».
+    </p>
+    <p class="hint-text">Личные данные, реквизиты юрлица/ИП и договор — в разделе «⚙️ Администрирование» → «Заказчик и реквизиты» (только для администратора).</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelAuthorBtn">Отмена</button>
+      <button class="btn btn-primary" id="saveAuthorBtn">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Work modal -->
+<div class="modal-overlay hidden" id="workModalOverlay">
+  <div class="modal modal-wide">
+    <h2 id="workModalTitle">Новое произведение</h2>
+    <label>Автор
+      <select id="wAuthor"></select>
+    </label>
+    <label>Название произведения / курса
+      <input type="text" id="wTitle" placeholder="Например: курс «Прорыв»">
+    </label>
+    <label>Поисковый запрос (что искать; можно несколько вариантов формулировки — по одному на строку, все будут проверены)
+      <textarea id="wQuery" rows="2" placeholder="Иванова курс Прорыв скачать&#10;Иванова курс Прорыв складчина"></textarea>
+    </label>
+    <label>Ключевые слова (по одному правилу на строке; строка = точная фраза, а через запятую в строке = набор слов в любом порядке)
+      <textarea id="wKeywords" rows="3" placeholder="иванова, прорыв&#10;ivanova course"></textarea>
+    </label>
+    <label>Стоп-слова (если встретится хотя бы одно — результат отбрасывается, даже при совпадении по ключевым словам)
+      <textarea id="wNegKeywords" rows="2" placeholder="другой автор&#10;не то произведение"></textarea>
+    </label>
+    <label>Страниц выдачи за проход
+      <input type="number" id="wPages" min="1" max="20" value="7">
+    </label>
+    <label>Источники поиска
+      <div class="checkbox-row">
+        <label class="checkbox-inline"><input type="checkbox" id="srcYandex" checked> Яндекс</label>
+        <label class="checkbox-inline"><input type="checkbox" id="srcGoogle"> Google</label>
+        <label class="checkbox-inline"><input type="checkbox" id="srcAvito"> Avito</label>
+        <label class="checkbox-inline"><input type="checkbox" id="srcTelegram"> Telegram</label>
+        <label class="checkbox-inline"><input type="checkbox" id="srcDuckduckgo"> DuckDuckGo</label>
+        <label class="checkbox-inline"><input type="checkbox" id="srcVk"> VK: записи</label>
+        <label class="checkbox-inline"><input type="checkbox" id="srcVkVideo"> VK: видео</label>
+        <label class="checkbox-inline"><input type="checkbox" id="srcTorrents"> Торренты</label>
+      </div>
+    </label>
+    <label>Дополнительные домены-исключения для этого произведения
+      <textarea id="wExtraBlocked" rows="2" placeholder="official-site.ru"></textarea>
+    </label>
+    <label>Сайт заказчика с этим произведением (для текста акта в отчёте)
+      <input type="text" id="wCustomerSite" placeholder="https://academymarketing.ru/ai_klon">
+    </label>
+    <label class="checkbox-inline-standalone"><input type="checkbox" id="wActive" checked> Активно (участвует в общих прогонах)</label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelWorkBtn">Отмена</button>
+      <button class="btn btn-primary" id="saveWorkBtn">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Documents modal -->
+<div class="modal-overlay hidden" id="documentsModalOverlay">
+  <div class="modal modal-wide">
+    <h2 id="documentsModalTitle">Документы автора</h2>
+
+    <div id="documentsList" class="documents-list"></div>
+    <div id="documentsEmptyMsg" class="hint-text hidden">Пока ничего не загружено.</div>
+
+    <form id="documentUploadForm" class="document-upload-form">
+      <label>Файл
+        <input type="file" id="docFile" required>
+      </label>
+      <label>Тип документа
+        <select id="docType">
+          <option value="доверенность">Доверенность</option>
+          <option value="подтверждение авторства">Подтверждение авторства</option>
+          <option value="договор">Договор</option>
+          <option value="скан паспорта">Скан паспорта</option>
+          <option value="другое">Другое</option>
+        </select>
+      </label>
+      <label>Комментарий (необязательно)
+        <input type="text" id="docDescription" placeholder="например: доверенность до 31.12.2026">
+      </label>
+      <button type="submit" class="btn btn-primary" id="docUploadBtn">Загрузить</button>
+    </form>
+    <p class="hint-text">Разрешены: PDF, Word (doc/docx/odt/rtf), изображения (jpg/png/tif/heic), электронная подпись (sig/p7s/sgn), архивы (zip/rar/7z). До 25 МБ на файл.</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeDocumentsBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Мои документы (доверенность от фирмы и т.п.) — свои, автоприкладываются к каждому заявлению, которое готовит этот сотрудник -->
+<div class="modal-overlay hidden" id="myDocumentsModalOverlay">
+  <div class="modal modal-wide">
+    <h2>🗂 Мои документы</h2>
+    <p class="hint-text">
+      Ваши личные документы (например, доверенность от фирмы на право подачи заявлений) — хранятся зашифрованными,
+      видны только вам и администратору. Автоматически прикладываются к каждому заявлению в суд, которое вы готовите —
+      отдельной папкой «документы специалиста, подающего заявление».
+    </p>
+
+    <div id="myDocumentsList" class="documents-list"></div>
+    <div id="myDocumentsEmptyMsg" class="hint-text hidden">Пока ничего не загружено.</div>
+
+    <form id="myDocumentUploadForm" class="document-upload-form">
+      <label>Файл
+        <input type="file" id="myDocFile" required>
+      </label>
+      <label>Комментарий (необязательно)
+        <input type="text" id="myDocDescription" placeholder="например: доверенность №12 от 01.01.2026">
+      </label>
+      <button type="submit" class="btn btn-primary" id="myDocUploadBtn">Загрузить</button>
+    </form>
+    <p class="hint-text">Разрешены: PDF, Word (doc/docx/odt/rtf), изображения (jpg/png/tif/heic), электронная подпись (sig/p7s/sgn), архивы (zip/rar/7z). До 25 МБ на файл.</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeMyDocumentsBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Отчёт по аналитике — редактируемая таблица перед скачиванием (только admin) -->
+<div class="modal-overlay hidden" id="analyticsReportModalOverlay">
+  <div class="modal modal-wide">
+    <h2>📄 Отчёт по аналитике</h2>
+    <p class="hint-text">
+      Цифры ниже — то же самое, что показано на графиках. Любое значение можно поправить вручную
+      (например, если автоматический подсчёт что-то не учёл) — в скачанный файл уйдёт именно то,
+      что видно здесь, а не заново вычисленное сервером.
+    </p>
+
+    <h3 class="analytics-subtitle">1. Обнаружено по месяцам</h3>
+    <table class="results-table" id="analyticsReportDetectedTable">
+      <thead><tr><th>Месяц</th><th>Обнаружено</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h3 class="analytics-subtitle">2. Заблокировано по месяцам</h3>
+    <table class="results-table" id="analyticsReportBlockedTable">
+      <thead><tr><th>Месяц</th><th>Заблокировано</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h3 class="analytics-subtitle">3. Динамика — обнаружено / заблокировано</h3>
+    <table class="results-table" id="analyticsReportDynamicsTable">
+      <thead><tr><th>Месяц</th><th>Обнаружено</th><th>Заблокировано</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <label class="hint-text" style="display:block; margin-top:8px;">
+      Медианное число дней от добавления до блокировки
+      <input type="number" id="analyticsReportMedianInput" step="0.1" style="width:100px; margin-left:8px;">
+    </label>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeAnalyticsReportBtn">Закрыть</button>
+      <button class="btn btn-primary" id="analyticsDownloadReportBtn">⬇ Скачать отчёт (.xlsx)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screenshots modal (фиксация нарушения по конкретной ссылке в блокировке) -->
+<div class="modal-overlay hidden" id="screenshotsModalOverlay">
+  <div class="modal modal-wide">
+    <h2 id="screenshotsModalTitle">Скриншоты</h2>
+    <p class="hint-text" id="screenshotsModalUrl"></p>
+
+    <div id="screenshotsGrid" class="screenshots-grid"></div>
+    <div id="screenshotsEmptyMsg" class="hint-text hidden">Пока ничего не загружено — добавьте скриншот для фиксации нарушения.</div>
+
+    <div class="modal-actions" style="justify-content: flex-start; margin-top: 0;">
+      <button class="btn btn-primary" id="autoShotBtn">📸 Сделать автоматический скриншот</button>
+    </div>
+    <p class="hint-text">Автоматический снимок сохраняет саму страницу, точное время и её HTML-код — как доказательство для суда.</p>
+
+    <form id="screenshotUploadForm" class="document-upload-form">
+      <label>Файл (скриншот или PDF)
+        <input type="file" id="shotFile" accept="image/*,.pdf" required>
+      </label>
+      <label>Что это подтверждает
+        <select id="shotPurpose">
+          <option value="violation">Фиксация нарушения (сама страница с пиратским контентом)</option>
+          <option value="defendant_proof">Подтверждение хостинга/ответчика (WHOIS, 2ip.io и т.п.)</option>
+        </select>
+      </label>
+      <label>Комментарий (необязательно)
+        <input type="text" id="shotDescription" placeholder="например: скриншот страницы от 05.08.2026">
+      </label>
+      <button type="submit" class="btn btn-primary" id="shotUploadBtn">Загрузить</button>
+    </form>
+    <p class="hint-text">Разрешены: JPG, PNG, WEBP, GIF, PDF. До 25 МБ на файл.</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeScreenshotsBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Complaints modal (Google DMCA + Avito + произвольные площадки — объединено в один раздел) -->
+<div class="modal-overlay hidden" id="otherComplaintsModalOverlay">
+  <div class="modal modal-wide">
+    <h2 id="otherComplaintsModalTitle">Жалобы</h2>
+    <p class="hint-text" id="otherComplaintsModalUrl"></p>
+
+    <p class="hint-text">Для Google, VK, YouTube, Instagram, Facebook, Avito — выберите площадку, кнопка «Открыть форму жалобы» откроет официальную форму (или форму поддержки, если выделенной формы для жалоб на авторские права нет — как у Avito) этой площадки в новой вкладке (сами формы заполняются вручную — это подписанные юридические заявления, автоматически отправлять их нельзя). Для Telegram официальной формы нет — кнопка откроет черновик письма на dmca@telegram.org. Здесь же можно зафиксировать сколько угодно любых других обращений.</p>
+
+    <table class="results-table">
+      <thead><tr><th>Дата</th><th>Куда отправлено</th><th>Примечание</th><th title="Когда площадка удалила ссылку (для Google — попадает в отчёт, лист «Поисковая выдача Google»)">Удалено</th><th></th></tr></thead>
+      <tbody id="otherComplaintsBody"></tbody>
+    </table>
+    <div id="otherComplaintsEmptyMsg" class="hint-text hidden">Пока ничего не добавлено.</div>
+
+    <form id="otherComplaintForm" class="document-upload-form">
+      <label>Дата отправки
+        <input type="date" id="ocFiledAt" required>
+      </label>
+      <label>Куда отправлено
+        <select id="ocPlatform">
+          <option value="">— выберите площадку —</option>
+          <option value="google">Google DMCA</option>
+          <option value="vk">VK / VK Видео</option>
+          <option value="youtube">YouTube</option>
+          <option value="instagram">Instagram</option>
+          <option value="facebook">Facebook</option>
+          <option value="telegram">Telegram</option>
+          <option value="avito">Avito</option>
+          <option value="other">Другое (указать вручную)</option>
+        </select>
+      </label>
+      <label id="ocMethodCustomLabel" class="hidden">Название площадки
+        <input type="text" id="ocMethod" placeholder="Например: торрент-трекер, форум">
+      </label>
+      <button type="button" class="btn btn-ghost hidden" id="ocOpenFormBtn">Открыть форму жалобы ↗</button>
+      <label>Примечание (необязательно)
+        <input type="text" id="ocNotes" placeholder="Например: написали администратору группы напрямую">
+      </label>
+      <label>Дата удаления ссылки площадкой (если уже удалено; можно отметить позже)
+        <input type="date" id="ocResolvedAt">
+      </label>
+      <button type="submit" class="btn btn-primary" id="ocAddBtn">Добавить</button>
+    </form>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeOtherComplaintsBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Site modal -->
+<div class="modal-overlay hidden" id="clientReportModalOverlay">
+  <div class="modal">
+    <h2>Отчёт для заказчика</h2>
+    <p class="hint-text">По форме юрфирмы: лист на каждое произведение, лист «Поисковая выдача Google» и акт выполненных работ.
+      В отчёт попадают ссылки, у которых в периоде было хоть одно событие (претензия, определение, обращение в РКН, блокировка, жалоба) —
+      и из «Блокировки», и из архива.</p>
+    <label>Автор
+      <select id="crAuthor"></select>
+    </label>
+    <div class="cr-works-block">
+      <div class="cr-works-head">
+        <b>Произведения</b>
+        <span><button type="button" class="row-btn" id="crAllWorks">Отметить все</button>
+        <button type="button" class="row-btn" id="crNoWorks">Снять все</button></span>
+      </div>
+      <div id="crWorks" class="cr-works"></div>
+    </div>
+    <div class="cr-period">
+      <label>Период с <input type="date" id="crFrom"></label>
+      <label>по <input type="date" id="crTo"></label>
+    </div>
+    <label id="crFeeLabel" class="hidden">Стоимость для акта, руб.
+      <input type="text" id="crFee" placeholder="Например: 39000">
+      <span class="hint-text">Подставлено из данных автора. Если за выбранный период сумма другая — исправьте здесь (в данных автора она не изменится).</span>
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="crCancelBtn">Отмена</button>
+      <button class="btn btn-primary" id="crDownloadBtn">Скачать отчёт (.xlsx)</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="siteModalOverlay">
+  <div class="modal">
+    <h2 id="siteModalTitle">Новый сайт</h2>
+    <label>Название сайта
+      <input type="text" id="sName" placeholder="Например: Форум XYZ">
+    </label>
+    <label>Как искать на сайте
+      <select id="sMode">
+        <option value="auto">Автоматически — по шаблону, при неудаче как форум XenForo (как раньше)</option>
+        <option value="template">Только по шаблону поиска (нужен {query} в адресе)</option>
+        <option value="xenforo">Форум XenForo — достаточно адреса сайта</option>
+        <option value="yandex">Через Яндекс (site:домен) — для сайтов без своего поиска</option>
+        <option value="manual">Ручная проверка — автоматически не искать</option>
+        <option value="off">Отключён</option>
+      </select>
+    </label>
+    <label>Приоритет
+      <select id="sPriority">
+        <option value="high">Высокий — искать первым</option>
+        <option value="normal">Обычный</option>
+        <option value="low">Низкий</option>
+      </select>
+    </label>
+    <label class="hidden">Тип сайта
+      <select id="sType">
+        <option value="auto">Автоматически (рекомендуется) — сначала обычная ссылка, при неудаче сам пробует XenForo-форму</option>
+        <option value="xenforo">Форум на XenForo напрямую — если точно знаете, что это XenForo, и хотите пропустить первую попытку</option>
+      </select>
+    </label>
+    <label id="sUrlLabel"><span id="sUrlLabelText">Шаблон поисковой ссылки (с плейсхолдером</span> <code id="sUrlLabelCode">{query}</code><span id="sUrlLabelTail">) — или просто адрес сайта, если он на XenForo</span>
+      <input type="text" id="sUrlTemplate" placeholder="https://example-forum.ru/search/?q={query}">
+    </label>
+    <label>Зеркала — другие адреса этого же сайта, по одному на строку
+      <textarea id="sMirrors" rows="2" placeholder="s67.zapret.me"></textarea>
+    </label>
+    <label>Примечание
+      <textarea id="sNotes" rows="2" placeholder="Например: постоянно блокируемый, автор такой-то; вход по приглашению"></textarea>
+    </label>
+    <p class="hint-text" id="sTypeHint">В режиме «Автоматически» можно вставить и обычный шаблон с {query}, и просто адрес сайта — сработает то, что подходит.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelSiteBtn">Отмена</button>
+      <button class="btn btn-primary" id="saveSiteBtn">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-overlay hidden" id="settingsModalOverlay">
+  <div class="modal modal-wide">
+    <h2>Настройки и общий блок-лист</h2>
+
+    <div class="settings-status" id="settingsStatus"></div>
+
+    <label>Общий блок-лист официальных/разрешённых доменов (по одному на строку — применяется ко всем произведениям)
+      <textarea id="fBlocklist" rows="10"></textarea>
+    </label>
+    <p class="hint-text">Шаблоны писем и реквизиты заказчика переехали в раздел «Администрирование» → «Шаблоны» / «Заказчик и реквизиты».</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeSettingsBtn">Закрыть</button>
+      <button class="btn btn-primary" id="saveBlocklistBtn">Сохранить блок-лист</button>
+    </div>
+  </div>
+</div>
+
+<!-- Личные данные автора-истца (полный доступ — admin; просмотр — по временному разрешению) -->
+<div class="modal-overlay hidden" id="authorDataModalOverlay">
+  <div class="modal modal-wide">
+    <h2 id="authorDataModalTitle">Личные данные автора</h2>
+    <p class="hint-text">
+      Используются при подготовке заявлений в суд (поле «истец»). Хранятся
+      зашифрованными на сервере. Полный доступ (просмотр и правка) — у
+      администратора. Обычный сотрудник может получить временное
+      разрешение на просмотр (раздел администрирования «Доступ к
+      документам») — тогда поля видны, но не редактируемы; либо
+      соприкасается с данными опосредованно, в момент подготовки
+      заявления — оба варианта фиксируются в журнале действий.
+    </p>
+    <form id="authorDataForm">
+      <label>Тип заявителя
+        <select id="aEntityType">
+          <option value="individual">Физическое лицо</option>
+          <option value="individual_entrepreneur">Индивидуальный предприниматель (ИП)</option>
+          <option value="organization">Юридическое лицо (организация)</option>
+        </select>
+      </label>
+
+      <div id="aIndividualFields">
+        <label>ФИО и дата рождения
+          <input type="text" id="aFullName" placeholder="Иванова Мария Сергеевна, 01.01.1990">
+        </label>
+        <label>Место рождения
+          <input type="text" id="aBirthPlace" placeholder="г. Москва">
+        </label>
+        <label>Паспорт
+          <input type="text" id="aPassport" placeholder="серия, номер">
+        </label>
+        <label>Кем выдан
+          <input type="text" id="aIssuedBy">
+        </label>
+        <label>СНИЛС
+          <input type="text" id="aSnils" placeholder="000-000-000 00">
+        </label>
+      </div>
+
+      <div id="aOrgFields" class="hidden">
+        <hr>
+        <p class="hint-text"><b>Заказчик и реквизиты</b> — вместо личных данных физлица (паспорт, адрес регистрации и т.п. в заявление не подгружаются). У ИП обычно нет КПП — поле можно оставить пустым.</p>
+        <label id="aOrgNameLabel">Наименование организации
+          <input type="text" id="aOrgName" placeholder="ООО «Компания»">
+        </label>
+        <label>ИНН
+          <input type="text" id="aOrgInn">
+        </label>
+        <label>КПП
+          <input type="text" id="aOrgKpp">
+        </label>
+        <label>Адрес
+          <input type="text" id="aOrgAddress" placeholder="г. Москва, ул. Примерная, д. 1">
+        </label>
+        <label>Представитель
+          <input type="text" id="aOrgRepresentative" placeholder="Петров Пётр Петрович, действующий на основании доверенности">
+        </label>
+      </div>
+
+      <hr>
+      <p class="hint-text"><b>Договор и реквизиты для «Акта выполненных работ»</b> — не попадают в заявление в суд, используются только при скачивании ежемесячного отчёта по этому автору (только admin).</p>
+      <label>Заказчик (юр. лицо)
+        <input type="text" id="aCustomerName" placeholder="Например: ООО «Компания»">
+      </label>
+      <label>Директор заказчика (в родительном падеже)
+        <input type="text" id="aCustomerDirector" placeholder="Например: Иванова Ивана Ивановича">
+      </label>
+      <div class="form-row">
+        <label>№ договора
+          <input type="text" id="aContractNumber" placeholder="Например: 188/2024">
+        </label>
+        <label>Дата договора
+          <input type="date" id="aContractDate">
+        </label>
+        <label>Стоимость услуг по договору за отчётный период, руб. (подставляется в акт; перед скачиванием отчёта её можно поправить)
+          <input type="text" id="aMonthlyFee" placeholder="Например: 39000">
+        </label>
+      </div>
+      <button type="button" class="row-btn" id="aSameAsRepresentativeBtn" title="Если автор сам является директором/представителем организации — не набирать ФИО заново">↳ ФИО автора совпадает с представителем/директором</button>
+      <a id="downloadAuthorReportLink" class="hint-text hidden" href="#">📄 Отчёт для заказчика (выбрать период)…</a>
+
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" id="aSaveBtn">Сохранить</button>
+      </div>
+    </form>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeAuthorDataBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
